@@ -1,0 +1,33 @@
+{
+    "name": "reflect/autoloader",
+    "license": "MIT",
+    "type": "library",
+    "description": "Autoloader decorator library",
+    "version": "dev-master",
+    "authors": [
+        {
+            "name": "Serafim",
+            "email": "nesk@xakep.ru"
+        }
+    ],
+    "require": {
+        "php": ">=7.0",
+        "reflect/streaming": "self.version"
+    },
+    "require-dev": {
+        "phpunit/phpunit": "~6.0"
+    },
+    "autoload": {
+        "files": [
+            "src/helpers.php"
+        ],
+        "psr-4": {
+            "Reflect\\Autoloader\\": "src/"
+        }
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "Tests\\": "tests/"
+        }
+    }
+}
