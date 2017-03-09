@@ -8,6 +8,9 @@ declare(strict_types=1);
 
 namespace Reflect\Autoloader {
     /**
+     * Scope isolated include.
+     * Prevents access to $this/self from included files.
+     *
      * @param string $file
      * @return mixed
      */
