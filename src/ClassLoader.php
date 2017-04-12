@@ -1,6 +1,7 @@
 <?php
 /**
  * This file is part of Reflect\Autoloader package.
+ *
  * For the full copyright and license information, please view the LICENSE
  * file that was distributed with this source code.
  */
@@ -8,94 +9,78 @@ declare(strict_types=1);
 
 namespace Reflect\Autoloader;
 
-use Composer\Autoload\ClassLoader as ComposerClassLoader;
-use Reflect\Autoloader\Config\ConfigMatcherBridge;
-use Reflect\Autoloader\Config\Repository;
-use Reflect\Autoloader\Config\RepositoryInterface;
-use Reflect\Autoloader\Matcher\Rule;
-use Reflect\Autoloader\Matcher\RuleMatcherInterface;
+use Composer\Autoload\ClassLoader as Composer;
 
 /**
  * Class ClassLoader
  * @package Reflect\Autoloader
  */
-class ClassLoader implements RuleMatcherInterface
+class ClassLoader
 {
-    use ConfigMatcherBridge;
+    /**
+     * Self namespace prefix for ignore rewriting of own sources
+     */
+    const NAMESPACE_PREFIX = 'Reflect\\';
 
     /**
-     * @var ComposerClassLoader
+     * @var Composer
      */
-    private $loader;
+    private $composer;
 
     /**
-     * @var RepositoryInterface
+     * @var array|Rule[]
      */
-    private $repository;
+    private $rules = [];
 
     /**
-     * ReflectClassLoader constructor.
-     * @param ComposerClassLoader $loader
-     * @param array               $config
+     * ClassLoader constructor.
+     * @param Composer $composer
      */
-    public function __construct(ComposerClassLoader $loader, array $config = [])
+    public function __construct(Composer $composer)
     {
-        $this->loader = $loader;
-        $this->repository = new Repository($config);
+        $this->composer = $composer;
 
         $this->register(true);
     }
 
     /**
      * @param bool $prepend
-     * @return $this
+     * @return $this|ClassLoader
      */
-    public function register(bool $prepend = true)
+    public function register(bool $prepend = true): ClassLoader
     {
-        $this->registerAllProtocols();
-
         spl_autoload_register([$this, 'loadClass'], true, $prepend);
 
         return $this;
     }
 
     /**
-     * @return void
+     * @return $this|ClassLoader
      */
-    private function registerAllProtocols()
-    {
-        /** @var Rule $rule */
-        foreach ($this->repository as $rule) {
-            $rule->getProtocol()->register();
-        }
-    }
-
-    /**
-     * @return $this
-     */
-    public function unregister()
+    public function unregister(): ClassLoader
     {
         spl_autoload_unregister([$this, 'loadClass']);
-
-        $this->unregisterAllProtocols();
 
         return $this;
     }
 
     /**
-     * @return void
+     * @return Rule
+     * @throws \InvalidArgumentException
      */
-    private function unregisterAllProtocols()
+    public function when(): Rule
     {
-        /** @var Rule $rule */
-        foreach ($this->repository as $rule) {
-            $rule->getProtocol()->unregister();
-        }
+        $rule = new Rule($this);
+
+        $this->rules[] = $rule;
+
+        return $rule;
     }
 
     /**
      * @param string $class
-     * @return mixed
+     * @return bool
+     * @throws \Throwable
      */
     public function loadClass(string $class)
     {
@@ -103,12 +88,17 @@ class ClassLoader implements RuleMatcherInterface
             return false;
         }
 
-        $rule = $this->getRule($class);
+        $file = $this->composer->findFile($class);
 
-        if ($rule !== null) {
-            $file = $rule->decorate($this->loader->findFile($class));
+        if (!is_string($file)) {
+            return false;
+        }
 
-            return require_file($file);
+        foreach ($this->rules as $rule) {
+            if ($rule->compare($class, $file)) {
+                $rule->require($file);
+                return true;
+            }
         }
 
         return false;
@@ -120,30 +110,6 @@ class ClassLoader implements RuleMatcherInterface
      */
     private function isSameNamespace(string $class): bool
     {
-        return 0 === strpos($class, 'Reflect\\');
-    }
-
-    /**
-     * @param string $class
-     * @return null|Rule
-     */
-    private function getRule(string $class)
-    {
-        /** @var Rule $rule */
-        foreach ($this->repository as $rule) {
-            if ($rule->check($class)) {
-                return $rule;
-            }
-        }
-
-        return null;
-    }
-
-    /**
-     * @return Rule
-     */
-    protected function rule(): Rule
-    {
-        return $this->repository->rule();
+        return 0 === strpos($class, static::NAMESPACE_PREFIX);
     }
 }

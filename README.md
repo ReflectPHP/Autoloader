@@ -1,11 +1,11 @@
 ReflectPHP Autoloader
 ====================
 
-[![Latest Stable Version](https://poser.pugx.org/ReflectPHP/Autoloader/version)](https://packagist.org/packages/ReflectPHP/Autoloader)
+[![Latest Stable Version](https://poser.pugx.org/reflect/autoloader/version)](https://packagist.org/packages/reflect/autoloader)
 [![Build Status](https://travis-ci.org/ReflectPHP/Autoloader.svg?branch=master)](https://travis-ci.org/ReflectPHP/Autoloader)
-[![License](https://poser.pugx.org/ReflectPHP/Autoloader/license)](https://packagist.org/packages/ReflectPHP/Autoloader)
+[![License](https://poser.pugx.org/reflect/autoloader/license)](https://packagist.org/packages/reflect/autoloader)
 
-Helper library to integrate ReflectPHP kernel with composer autoloader. 
+Helper library to integrate ReflectPHP kernel with composer autoloader.
  
 ## Require
 - PHP 7.0 or greater
@@ -20,65 +20,41 @@ composer require reflect/autoloader
 
 ## Usage
 
-### Restreaming example
-
 ```php
-use Reflect\Autoloader\ClassLoader;
+use Reflect\Autoloader\ClassLoader; 
 
-$composer = require __DIR__ . '/vendor/autoload.php';
+$composer = __DIR__ . '/verndor/autoload.php';
 
-(new ClassLoader($composer))
-    ->class('TestClass')
-    ->restream(function (string $path) {
-        return '/path/to/cached/' . $path;
+$loader = new ClassLoader($composer); 
+$loader->when()
+    ->ever()
+    ->then(function(string sources): string {
+        return '<?php class A { } echo "Class A";';
     });
     
-new TestClass(); // Will be included from "/path/to/cached/[...]/TestClass.php"
+    
+new A(); // Class A
 ```
 
-## Autoloading rules
-
-### Register loader
+## Rules
 
 ```php
-use Reflect\Autoloader\ClassLoader;
-
-$loader = ClassLoader(require __DIR__ . '/vendor/autoload.php');
-```
-
-### Class matcher
-
-Will works for all classes named "SomeName".
-
-```php
-$loader->class('SomeName')->...;
-```
-
-### Namespace matcher
-
-Will works for all namespaces with prefix "Some/Any" like "Some/Any/ClassName" or "Some/Any/Olololo/Asdasd" classes.
-
-```php
-$loader->namespace('Some/Any')->...;
-```
-
-### Pattern matcher
-
-Will works if class path (namespace + class) matched target pattern:
- 
-```php
-$loader->match('\w+Test')->...;
-```
-
-### Custom comparator
-
-```php
-use Reflect\Autoloader\Matcher\Comparator;
-
-$loader->compare(new class extends Comparator {
-    public function compare(string $classPath): bool
-    {
-        return true; // or false
-    }
-})->...;
+(new ClassLoader($composer))
+    ->when()
+        ->ever()                    // Every class
+        ->name('Foo\\Bar')          // Every class who contains sequence "Foo\Bar"
+        ->inNamespace('Foo')        // Every class in "Foo" namespace
+        ->className('Bar')          // Every class named "Bar"
+        ->matchClass('^B.+')        // Every class matched with given pattern "^B.+"
+        ->fileName('Bar.php')       // Every file with name "Bar.php"
+        ->matchFile('^bar.*?')      // Every file matched with given pattern "^bar.*?"
+        ->comparedBy(new class implements Comparator {
+                                    // Custom comparator
+        })
+        ->then(function(string $sources, ?string $file): string {
+            // Execute
+        })
+    ->when()
+        -> // Another rules group
+;
 ```
